@@ -1,0 +1,27 @@
+# fly.toml — Fly.io 部署配置
+# 首次部署前执行: flyctl launch --generate-name
+# 之后推送: git push 自动触发 GitHub Actions
+
+app = "tictactoe-2p"
+
+[build]
+  builder = "heroku/buildpacks:20"
+
+[env]
+  PORT = "8080"
+
+[[services]]
+  internal_port = 8080
+  protocol = "tcp"
+
+  [[services.ports]]
+    handlers = ["http", "ws"]
+    port = 80
+
+  [[services.ports]]
+    handlers = ["http", "ws"]
+    port = 443
+
+  [services.concurrency]
+    hard_limit = 50
+    soft_limit = 20

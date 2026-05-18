@@ -1,0 +1,15 @@
+{
+  "name": "tictactoe-multiplayer",
+  "version": "1.0.0",
+  "private": true,
+  "description": "井字棋双人终端对战",
+  "scripts": {
+    "install:all": "npm --prefix server install && npm --prefix client install",
+    "start:server": "node server/index.js",
+    "start:client": "node client/index.js",
+    "test": "node test-protocol.js"
+  },
+  "dependencies": {
+    "ws": "^8.20.1"
+  }
+}
