@@ -6,6 +6,9 @@
  *   服务端 → 客户端: room_created, room_joined, game_start, state, opponent_left, error
  */
 
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
 const { WebSocketServer } = require('ws');
 const {
   createRoom, joinRoom, handleMove,
@@ -14,9 +17,45 @@ const {
 const { createBoard, formatSymbol, playerToPiece } = require('./game');
 
 const PORT = process.env.PORT || 8080;
+const PUBLIC_DIR = path.join(__dirname, 'public');
 
-const wss = new WebSocketServer({ port: PORT });
-console.log(`🎮 井字棋服务器启动 | 端口: ${PORT}`);
+// ── HTTP 服务器（提供静态页面）──
+const httpServer = http.createServer((req, res) => {
+  let filePath = req.url === '/' ? '/index.html' : req.url;
+  filePath = path.join(PUBLIC_DIR, filePath);
+
+  // 安全：确保不跳出 public 目录
+  if (!filePath.startsWith(PUBLIC_DIR)) {
+    res.writeHead(403); res.end('Forbidden');
+    return;
+  }
+
+  fs.readFile(filePath, (err, data) => {
+    if (err) {
+      res.writeHead(404);
+      res.end('Not found');
+      return;
+    }
+    const ext = path.extname(filePath);
+    const mime = {
+      '.html': 'text/html; charset=utf-8',
+      '.css': 'text/css',
+      '.js': 'application/javascript',
+      '.json': 'application/json',
+      '.png': 'image/png',
+      '.svg': 'image/svg+xml',
+    };
+    res.writeHead(200, { 'Content-Type': mime[ext] || 'text/plain' });
+    res.end(data);
+  });
+});
+
+// ── WebSocket 服务器（挂载在 HTTP server 上）──
+const wss = new WebSocketServer({ server: httpServer });
+
+httpServer.listen(PORT, () => {
+  console.log(`🎮 井字棋服务器启动 | http://localhost:${PORT}`);
+});
 
 // ── 客户端连接 ──────────────────────────────────────────────
 

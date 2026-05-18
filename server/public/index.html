@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>井字棋 · 双人对战</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  :root {
+    --bg: #1a1a2e;
+    --surface: #16213e;
+    --card: #0f3460;
+    --accent: #e94560;
+    --x-color: #ff6b6b;
+    --o-color: #4ecdc4;
+    --text: #eee;
+    --text-dim: #8899aa;
+    --win-glow: 0 0 20px rgba(233, 69, 96, 0.6);
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0;
+    padding: 16px;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 420px;
+    text-align: center;
+  }
+
+  h1 {
+    font-size: 2em;
+    font-weight: 800;
+    letter-spacing: 2px;
+    margin-bottom: 4px;
+  }
+  h1 span.x { color: var(--x-color); }
+  h1 span.o { color: var(--o-color); }
+  .subtitle {
+    color: var(--text-dim);
+    font-size: 0.9em;
+    margin-bottom: 32px;
+  }
+
+  /* ── Screens ── */
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* ── Buttons ── */
+  .btn {
+    display: block;
+    width: 100%;
+    padding: 16px;
+    font-size: 1.1em;
+    font-weight: 600;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.2s;
+    margin-bottom: 12px;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(233, 69, 96, 0.4);
+  }
+  .btn-secondary {
+    background: var(--card);
+    color: var(--text);
+    border: 1px solid #1a4a7a;
+  }
+  .btn-small {
+    display: inline-block;
+    width: auto;
+    padding: 10px 24px;
+    font-size: 0.95em;
+  }
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* ── Room code input ── */
+  .room-input-group {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .room-input-group input {
+    flex: 1;
+    padding: 14px 16px;
+    font-size: 1.3em;
+    font-weight: 700;
+    letter-spacing: 6px;
+    text-align: center;
+    text-transform: uppercase;
+    background: var(--surface);
+    border: 2px solid var(--card);
+    border-radius: 12px;
+    color: var(--text);
+    outline: none;
+  }
+  .room-input-group input:focus {
+    border-color: var(--accent);
+  }
+
+  /* ── Room code display (waiting) ── */
+  .room-code-display {
+    font-size: 3em;
+    font-weight: 800;
+    letter-spacing: 12px;
+    color: var(--accent);
+    margin: 16px 0;
+    padding: 16px;
+    background: var(--surface);
+    border-radius: 16px;
+    border: 2px dashed var(--card);
+  }
+  .waiting-text {
+    color: var(--text-dim);
+    margin: 8px 0 24px;
+  }
+  .share-hint {
+    font-size: 0.85em;
+    color: var(--text-dim);
+    background: var(--surface);
+    padding: 12px;
+    border-radius: 8px;
+    margin-top: 8px;
+  }
+
+  /* ── Status bar ── */
+  .status {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    background: var(--surface);
+    border-radius: 12px;
+    margin-bottom: 20px;
+    font-weight: 600;
+  }
+  .player-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .player-badge .icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: 0.85em;
+  }
+  .icon.x { background: var(--x-color); color: #fff; }
+  .icon.o { background: var(--o-color); color: #fff; }
+  .turn-indicator {
+    color: var(--text-dim);
+    font-size: 0.85em;
+  }
+  .turn-indicator.active {
+    color: #4ade80;
+  }
+  .result-banner {
+    font-size: 1.2em;
+    font-weight: 700;
+    padding: 8px 16px;
+    border-radius: 8px;
+  }
+  .result-banner.win { color: #4ade80; }
+  .result-banner.lose { color: var(--x-color); }
+  .result-banner.draw { color: #fbbf24; }
+
+  /* ── Board ── */
+  .board {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    background: var(--card);
+    border-radius: 16px;
+    padding: 6px;
+    margin-bottom: 16px;
+  }
+  .cell {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3.2em;
+    font-weight: 800;
+    background: var(--surface);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .cell:hover:not(.taken):not(.disabled) {
+    background: #1a3a5c;
+  }
+  .cell:active:not(.taken):not(.disabled) {
+    transform: scale(0.95);
+  }
+  .cell.x { color: var(--x-color); }
+  .cell.o { color: var(--o-color); }
+  .cell.taken { cursor: default; }
+  .cell.disabled { cursor: default; }
+  .cell.win-cell {
+    animation: pulse 0.8s ease-in-out infinite alternate;
+  }
+  @keyframes pulse {
+    from { box-shadow: inset 0 0 0 0 rgba(233, 69, 96, 0); }
+    to { box-shadow: inset 0 0 20px 4px rgba(233, 69, 96, 0.3); }
+  }
+
+  .board.disabled .cell { cursor: default; }
+  .board.disabled .cell:hover { background: var(--surface); }
+
+  /* ── Error toast ── */
+  .toast {
+    position: fixed;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--accent);
+    color: #fff;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-weight: 600;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    z-index: 100;
+    display: none;
+    animation: toastIn 0.3s ease;
+  }
+  .toast.show { display: block; }
+  @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+
+  /* ── Responsive ── */
+  @media (max-width: 480px) {
+    .container { max-width: 100%; }
+    .room-code-display { font-size: 2.2em; letter-spacing: 8px; }
+    .cell { font-size: 2.5em; }
+  }
+
+  /* ── Spinner ── */
+  .spinner {
+    width: 40px; height: 40px;
+    margin: 20px auto;
+    border: 4px solid var(--card);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1><span class="x">井</span>字<span class="o">棋</span></h1>
+  <p class="subtitle">双人实时对战</p>
+
+  <!-- ── Menu ── -->
+  <div id="screen-menu" class="screen active">
+    <button class="btn btn-primary" onclick="createRoom()">🎮 创建房间</button>
+    <button class="btn btn-secondary" onclick="showJoin()">🔗 加入房间</button>
+  </div>
+
+  <!-- ── Join ── -->
+  <div id="screen-join" class="screen">
+    <p style="margin-bottom:16px;color:var(--text-dim);">输入对手给你的房间号</p>
+    <div class="room-input-group">
+      <input id="roomInput" type="text" maxlength="6" placeholder="房间号" autocomplete="off" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')">
+    </div>
+    <button class="btn btn-primary" onclick="joinRoom()">加入</button>
+    <button class="btn btn-secondary" onclick="showMenu()">← 返回</button>
+  </div>
+
+  <!-- ── Waiting ── -->
+  <div id="screen-waiting" class="screen">
+    <p style="margin-bottom:8px;color:var(--text-dim);">你的房间号</p>
+    <div class="room-code-display" id="roomCodeDisplay">------</div>
+    <p class="waiting-text">⏳ 等待对手加入...</p>
+    <div class="spinner"></div>
+    <div class="share-hint">把这个房间号发给你的对手</div>
+  </div>
+
+  <!-- ── Game ── -->
+  <div id="screen-game" class="screen">
+    <div class="status" id="statusBar">
+      <div class="player-badge">
+        <div class="icon x" id="myIcon">X</div>
+        <span id="myLabel">我</span>
+      </div>
+      <div class="turn-indicator" id="turnIndicator">你的回合</div>
+      <div class="player-badge">
+        <span id="oppLabel">对手</span>
+        <div class="icon o" id="oppIcon">O</div>
+      </div>
+    </div>
+
+    <div class="board" id="board">
+      <div class="cell" data-i="0" onclick="clickCell(0)"></div>
+      <div class="cell" data-i="1" onclick="clickCell(1)"></div>
+      <div class="cell" data-i="2" onclick="clickCell(2)"></div>
+      <div class="cell" data-i="3" onclick="clickCell(3)"></div>
+      <div class="cell" data-i="4" onclick="clickCell(4)"></div>
+      <div class="cell" data-i="5" onclick="clickCell(5)"></div>
+      <div class="cell" data-i="6" onclick="clickCell(6)"></div>
+      <div class="cell" data-i="7" onclick="clickCell(7)"></div>
+      <div class="cell" data-i="8" onclick="clickCell(8)"></div>
+    </div>
+
+    <button class="btn btn-primary" id="restartBtn" style="display:none" onclick="restartGame()">🔄 再来一局</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════
+//  Game Client
+// ══════════════════════════════════════════════
+
+let ws = null;
+let myId = null;       // 1 or 2
+let currentTurn = null;
+let boardState = [null, null, null, null, null, null, null, null, null];
+let gameOver = false;
+let winCells = [];
+let mySymbol = 'X';
+let oppSymbol = 'O';
+
+const BOARD = document.getElementById('board');
+const CELLS = document.querySelectorAll('.cell');
+const STATUS_BAR = document.getElementById('statusBar');
+const TURN_IND = document.getElementById('turnIndicator');
+const MY_ICON = document.getElementById('myIcon');
+const OPP_ICON = document.getElementById('oppIcon');
+const MY_LABEL = document.getElementById('myLabel');
+const OPP_LABEL = document.getElementById('oppLabel');
+const RESTART_BTN = document.getElementById('restartBtn');
+const TOAST = document.getElementById('toast');
+const ROOM_INPUT = document.getElementById('roomInput');
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+}
+
+function showToast(msg, duration) {
+  TOAST.textContent = msg;
+  TOAST.classList.add('show');
+  setTimeout(() => TOAST.classList.remove('show'), duration || 3000);
+}
+
+function getWsUrl() {
+  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return proto + '//' + window.location.host;
+}
+
+function connect(callback) {
+  if (ws && ws.readyState === WebSocket.OPEN) { callback(); return; }
+  ws = new WebSocket(getWsUrl());
+  ws.onopen = () => callback();
+  ws.onmessage = (e) => handleMsg(JSON.parse(e.data));
+  ws.onclose = () => {
+    if (document.querySelector('.screen.active') !== document.getElementById('screen-menu')) {
+      showToast('与服务器断开连接');
+      showScreen('menu');
+    }
+  };
+}
+
+function send(obj) {
+  if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
+}
+
+// ── UI Actions ──
+
+function showMenu() { showScreen('menu'); }
+function showJoin() {
+  ROOM_INPUT.value = '';
+  showScreen('join');
+  setTimeout(() => ROOM_INPUT.focus(), 100);
+}
+
+function createRoom() {
+  connect(() => send({ type: 'create_room' }));
+}
+
+function joinRoom() {
+  const code = ROOM_INPUT.value.trim().toUpperCase();
+  if (code.length < 4) { showToast('请输入完整的房间号'); return; }
+  connect(() => send({ type: 'join_room', roomId: code }));
+}
+
+function restartGame() {
+  send({ type: 'restart' });
+}
+
+function clickCell(i) {
+  if (gameOver || currentTurn !== myId || boardState[i] !== null) return;
+  send({ type: 'move', position: i });
+}
+
+// ── Render Board ──
+
+function renderBoard(board) {
+  boardState = board;
+  CELLS.forEach((cell, i) => {
+    const val = board[i];
+    cell.textContent = val === 1 ? 'X' : val === 2 ? 'O' : '';
+    cell.className = 'cell';
+    if (val !== null) cell.classList.add('taken');
+    if (val === 1) cell.classList.add('x');
+    if (val === 2) cell.classList.add('o');
+    if (winCells.includes(i)) cell.classList.add('win-cell');
+    if (gameOver || currentTurn !== myId) cell.classList.add('disabled');
+  });
+  if (gameOver || currentTurn !== myId) BOARD.classList.add('disabled');
+  else BOARD.classList.remove('disabled');
+}
+
+function updateStatus() {
+  MY_ICON.textContent = mySymbol;
+  MY_ICON.className = 'icon ' + (mySymbol === 'X' ? 'x' : 'o');
+  OPP_ICON.textContent = oppSymbol;
+  OPP_ICON.className = 'icon ' + (oppSymbol === 'X' ? 'x' : 'o');
+  MY_LABEL.textContent = '我 (' + mySymbol + ')';
+  OPP_LABEL.textContent = '对手 (' + oppSymbol + ')';
+}
+
+// ── Win line detection for highlighting ──
+
+const WIN_LINES = [
+  [0,1,2],[3,4,5],[6,7,8],
+  [0,3,6],[1,4,7],[2,5,8],
+  [0,4,8],[2,4,6]
+];
+
+function findWinCells(board, winner) {
+  if (!winner) return [];
+  for (const [a,b,c] of WIN_LINES) {
+    if (board[a] === winner && board[b] === winner && board[c] === winner)
+      return [a,b,c];
+  }
+  return [];
+}
+
+// ── Handle Server Messages ──
+
+function handleMsg(msg) {
+  switch (msg.type) {
+    case 'room_created':
+      myId = msg.playerId;
+      document.getElementById('roomCodeDisplay').textContent = msg.roomId;
+      showScreen('waiting');
+      break;
+
+    case 'room_joined':
+      myId = msg.playerId;
+      // 等待 game_start
+      break;
+
+    case 'game_start':
+      myId = msg.you;
+      mySymbol = myId === 1 ? 'X' : 'O';
+      oppSymbol = myId === 1 ? 'O' : 'X';
+      currentTurn = msg.turn;
+      gameOver = false;
+      winCells = [];
+      RESTART_BTN.style.display = 'none';
+      updateStatus();
+      renderBoard(msg.board);
+      showScreen('game');
+      updateTurnText();
+      break;
+
+    case 'state':
+      currentTurn = msg.turn;
+      gameOver = msg.phase === 'ended';
+      if (gameOver) {
+        winCells = findWinCells(msg.board, msg.winner);
+        RESTART_BTN.style.display = 'block';
+        if (msg.isDraw) {
+          TURN_IND.innerHTML = '<span class="result-banner draw">🤝 平局</span>';
+        } else if (msg.winner === myId) {
+          TURN_IND.innerHTML = '<span class="result-banner win">🎉 你赢了!</span>';
+        } else {
+          TURN_IND.innerHTML = '<span class="result-banner lose">你输了</span>';
+        }
+      } else {
+        updateTurnText();
+      }
+      renderBoard(msg.board);
+      break;
+
+    case 'opponent_left':
+      showToast('对手已离开');
+      showScreen('menu');
+      break;
+
+    case 'error':
+      showToast(msg.message);
+      break;
+  }
+}
+
+function updateTurnText() {
+  if (currentTurn === myId) {
+    TURN_IND.innerHTML = '<span style="color:#4ade80">⚡ 你的回合</span>';
+  } else {
+    TURN_IND.innerHTML = '<span style="color:var(--text-dim)">⏳ 对手思考中...</span>';
+  }
+}
+
+// ── Keyboard shortcut: Enter to join ──
+ROOM_INPUT.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') joinRoom();
+});
+</script>
+</body>
+</html>

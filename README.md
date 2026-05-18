@@ -4,31 +4,28 @@
 
 ---
 
-## 快速开始（本地测试）
+## 快速开始
+
+### 浏览器版（推荐）
+
+部署后打开一个链接即可：
+
+```bash
+https://tictactoe-server.onrender.com
+```
+
+### 本地测试
 
 ```bash
 # 1. 安装依赖
-cd server && npm install && cd ..
-cd client && npm install && cd ..
+npm --prefix server install
 
-# 2. 启动服务器（终端 1）
+# 2. 启动服务器
 node server/index.js
 
-# 3. 启动玩家 1 客户端（终端 2）
-node client/index.js
-
-# 4. 启动玩家 2 客户端（终端 3）
-node client/index.js
+# 3. 在浏览器打开 http://localhost:8080
+#    然后另一个浏览器窗口/手机打开同一个地址，即可对战
 ```
-
-**操作流程：**
-
-| 步骤 | 玩家 1 | 玩家 2 |
-|------|--------|--------|
-| ① | 按 `1` → 创建房间 | 按 `2` → 输入玩家 1 的房间号 → Enter |
-| ② | 等待对手加入 | 加入成功后自动开始 |
-| ③ | 轮到你的回合时用 ↑↓←→ 移动光标，Space/Enter 落子 | 同理 |
-| ④ | 游戏结束后按 `r` 重新开始，`q` 退出 | — |
 
 ---
 
