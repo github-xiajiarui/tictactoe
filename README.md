@@ -53,61 +53,39 @@ tictactoe/
 
 ---
 
-## 部署到 Fly.io（生产环境）
+## 部署到 Render.com（推荐 · 零 CLI）
 
-### 前置条件
+[Render.com](https://render.com) 的免费套餐原生支持 WebSocket，且**不需要安装任何命令行工具**。
 
-1. 注册 [Fly.io](https://fly.io) 账号
-2. 安装 [flyctl](https://fly.io/docs/hands-on/install-flyctl/)
-3. 登录: `flyctl auth login`
+### 部署步骤（全程在浏览器操作，约 2 分钟）
 
-### 第一步：创建 Fly 应用
+| 步骤 | 操作 |
+|------|------|
+| ① | 打开 [render.com](https://dashboard.render.com) 并注册/登录 |
+| ② | 点击右上角 **New +** → **Blueprint** |
+| ③ | 选择 **Connect a repository** → 连接 `github-xiajiarui/tictactoe` |
+| ④ | Render 会自动读取 `render.yaml` → 点击 **Apply** |
+| ⑤ | 等待部署完成（约 2 分钟） |
+
+部署完成后，Render 会显示你的服务 URL，类似：
+```
+https://tictactoe-server.onrender.com
+```
+
+### 客户端连接
 
 ```bash
-cd tictactoe
+node client/index.js --server wss://tictactoe-server.onrender.com
+```
+
+### 可选：部署到 Fly.io
+
+如果希望使用 Fly.io，需要先安装 [flyctl](https://fly.io/docs/hands-on/install-flyctl/)，然后：
+
+```bash
 flyctl launch --generate-name --no-deploy
-```
-
-这会生成一个 `fly.toml`（项目已自带，但 `app` 名需要更新）。
-
-编辑 `fly.toml`，将 `app` 改为刚才创建的应用名：
-
-```toml
-app = "你的应用名"   # 例如 app = "tictactoe-2p-1234"
-```
-
-### 第二步：手动部署一次
-
-```bash
+# 编辑 fly.toml 中的 app 名称
 flyctl deploy
-```
-
-部署完成后查看状态：
-
-```bash
-flyctl status
-```
-
-你会看到类似 `https://tictactoe-2p-1234.fly.dev` 的地址。
-
-### 第三步：配置 GitHub Actions（自动部署）
-
-1. 在 GitHub 仓库 → Settings → Secrets and variables → Actions
-2. 点击 **New repository secret**
-3. Name: `FLY_API_TOKEN`
-4. Value: 运行以下命令获取
-
-```bash
-flyctl auth token
-```
-
-然后复制粘贴到 GitHub 的 secret 中。
-
-之后每次 `git push` 到 `main` 分支，GitHub Actions 会自动重新部署。
-
-### 第四步：客户端连接远程服务器
-
-```bash
 node client/index.js --server wss://你的应用名.fly.dev
 ```
 

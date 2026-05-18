@@ -1,0 +1,15 @@
+# Render Blueprint — 自动部署配置
+# 使用方式: 在 https://render.com 点 "New +" → "Blueprint"
+# 然后连接本 GitHub 仓库即可
+
+services:
+  - type: web
+    name: tictactoe-server
+    env: node
+    region: singapore  # 亚洲节点，延迟低
+    buildCommand: npm --prefix server install
+    startCommand: node server/index.js
+    healthCheckPath: /
+    envVars:
+      - key: PORT
+        value: "8080"
